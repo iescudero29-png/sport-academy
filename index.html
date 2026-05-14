@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPORT ACADEMY</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --panel: #111;
+      --line: #292929;
+      --text: #f7f7f7;
+      --accent: #ffd34d;
+      --danger: #ff5f5f;
+      --good: #51ff8a;
+      --blue: #5fc2ff;
+      --orange: #ff9f3f;
+      --crt: 1;
+      --font-scale: 1;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, #1a1a1a, #050505 70%);
+      color: var(--text);
+      font-family: "Courier New", Courier, monospace;
+      image-rendering: pixelated;
+    }
+    #app {
+      position: relative;
+      width: min(96vw, 1066px);
+      aspect-ratio: 4 / 3;
+      border: 4px solid #3a3a3a;
+      box-shadow: 0 0 0 3px #000, 0 12px 36px rgba(0,0,0,.6);
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #050505;
+      image-rendering: pixelated;
+    }
+    #hub-ui,
+    #overlay-ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .panel {
+      pointer-events: auto;
+      border: 2px solid var(--line);
+      background: rgba(6, 6, 6, 0.92);
+      box-shadow: 0 0 16px rgba(0,0,0,.5);
+      padding: 8px;
+    }
+    .hub {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      padding: 8px;
+      gap: 6px;
+      font-size: calc(14px * var(--font-scale));
+    }
+    .marquee {
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 0 8px #f00, 0 0 8px #ff0;
+      animation: flash 1s steps(2, end) infinite;
+    }
+    @keyframes flash {
+      0% { color: #fff; }
+      25% { color: #ffd34d; }
+      50% { color: #ff6060; }
+      75% { color: #5fc2ff; }
+      100% { color: #fff; }
+    }
+    .hub-main {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 8px;
+      min-height: 0;
+    }
+    .cabinets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      align-content: start;
+    }
+    .cabinet {
+      border: 2px solid #333;
+      background: #0e0e0e;
+      min-height: 180px;
+      padding: 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .12s steps(2), box-shadow .12s linear;
+    }
+    .cabinet:focus,
+    .cabinet:hover {
+      transform: translateY(-2px) rotate(-.4deg);
+      box-shadow: 0 0 10px #fff3, 0 0 16px var(--accent);
+      outline: none;
+    }
+    .cabinet .thumb {
+      height: 110px;
+      margin-bottom: 6px;
+      border: 1px solid #282828;
+      background: #101010;
+      display: grid;
+      place-items: center;
+      font-size: calc(42px * var(--font-scale));
+    }
+    .side-col {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 8px;
+      min-height: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: calc(12px * var(--font-scale));
+    }
+    th, td {
+      border-bottom: 1px solid #222;
+      padding: 2px 4px;
+    }
+    .insert-coin {
+      text-align: center;
+      color: var(--accent);
+      animation: blink 1s steps(2, end) infinite;
+      margin-top: auto;
+      font-weight: 700;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .hud {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      pointer-events: none;
+      font-size: calc(14px * var(--font-scale));
+    }
+    .hud-top, .hud-bottom {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,.72);
+      border-bottom: 1px solid #303030;
+      padding: 4px 8px;
+      font-weight: 700;
+    }
+    .hud-bottom { border-bottom: none; border-top: 1px solid #303030; }
+    .xp-wrap {
+      width: 220px;
+      height: 12px;
+      border: 1px solid #666;
+      background: #111;
+    }
+    .xp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3dd75f, #b6ff7c);
+      width: 0;
+    }
+    .overlay-card {
+      pointer-events: auto;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(94%, 520px);
+      font-size: calc(14px * var(--font-scale));
+      z-index: 5;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    button, input {
+      font: inherit;
+      color: inherit;
+      background: #161616;
+      border: 2px solid #333;
+      padding: 6px 8px;
+    }
+    button { cursor: pointer; }
+    button:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px #000, 0 0 10px #ffd34d88;
+    }
+    .settings {
+      display: grid;
+      gap: 6px;
+      font-size: calc(12px * var(--font-scale));
+    }
+    .badge-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 6px;
+    }
+    .badge {
+      border: 1px solid #3a3a3a;
+      text-align: center;
+      padding: 6px 4px;
+      font-size: calc(11px * var(--font-scale));
+      background: #111;
+    }
+    .badge.unlocked {
+      border-color: #2f8f4b;
+      background: #0f1f13;
+      color: #9affbf;
+    }
+    #app::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: var(--crt);
+      background:
+        radial-gradient(circle at center, transparent 52%, rgba(0,0,0,.32) 100%),
+        repeating-linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 2px,
+          rgba(0,0,0,.12) 3px,
+          transparent 4px
+        );
+      animation: flick .1s infinite;
+    }
+    @keyframes flick {
+      0% { opacity: calc(var(--crt) * 0.99); }
+      50% { opacity: calc(var(--crt) * 1.0); }
+      100% { opacity: calc(var(--crt) * 0.985); }
+    }
+    .hidden { display: none !important; }
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .progress-bar {
+      height: 10px;
+      background: #141414;
+      border: 1px solid #333;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .progress-bar > span {
+      display: block;
+      height: 100%;
+      width: 100%;
+      transform-origin: left;
+      background: linear-gradient(90deg, #ffd34d, #ff7f50);
+    }
+    @media (max-width: 900px) {
+      .hub-main { grid-template-columns: 1fr; }
+      .cabinets { grid-template-columns: 1fr; }
+      .cabinet { min-height: 120px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" aria-label="SPORT ACADEMY retro sports learning hub">
+    <canvas id="gameCanvas" width="640" height="480" aria-label="SPORT ACADEMY game canvas">Your browser does not support HTML5 canvas.</canvas>
+    <div id="hub-ui"></div>
+    <div id="overlay-ui"></div>
+  </div>
+  <script>
+    const DEBUG = false;
+    const CONFIG = {
+      WIDTH: 640, HEIGHT: 480, FIXED_DT: 1 / 60, STORAGE_KEY: "sportacademy_progress",
+      STATES: { HUB: "HUB", GAME_SELECT: "GAME_SELECT", GAME_LOADING: "GAME_LOADING", PLAYING: "PLAYING", QUIZ: "QUIZ", PAUSED: "PAUSED", GAME_OVER: "GAME_OVER", SCORE_SCREEN: "SCORE_SCREEN" }
+    };
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    ctx.imageSmoothingEnabled = false;
+    const hubUI = document.getElementById("hub-ui");
+    const overlayUI = document.getElementById("overlay-ui");
+    const Input = { down: new Set(), pressed: new Set(), released: new Set(), clearFrame() { this.pressed.clear(); this.released.clear(); } };
+    addEventListener("keydown", (e) => {
+      const key = e.key.toLowerCase();
+      if (["arrowup","arrowdown","arrowleft","arrowright"," ","escape","shift","enter"].includes(key) || ["w","a","s","d"].includes(key)) e.preventDefault();
+      if (!Input.down.has(key)) Input.pressed.add(key);
+      Input.down.add(key);
+      if (key === "escape") handleEscape();
+    });
+    addEventListener("keyup", (e) => {
+      const key = e.key.toLowerCase();
+      Input.down.delete(key);
+      Input.released.add(key);
+    });
+    const Storage = {
+      load() {
+        const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+        const base = { studentName: "PLAYER1", highScores: { hockey: 0, football: 0, basketball: 0 }, badges: { hockey_physics: false, hockey_geometry: false, hockey_statistics: false, hockey_rules: false, football_physics: false, football_geometry: false, football_statistics: false, football_rules: false, basketball_physics: false, basketball_geometry: false, basketball_statistics: false, basketball_rules: false }, quizStats: { correct: 0, attempted: 0 }, lastPlayed: new Date().toISOString(), settings: { highContrast: false, largeFont: false, colorBlind: false } };
+        if (!raw) return base;
+        try {
+          const parsed = JSON.parse(raw);
+          return { ...base, ...parsed, highScores: { ...base.highScores, ...(parsed.highScores || {}) }, badges: { ...base.badges, ...(parsed.badges || {}) }, quizStats: { ...base.quizStats, ...(parsed.quizStats || {}) }, settings: { ...base.settings, ...(parsed.settings || {}) } };
+        } catch { return base; }
+      },
+      save(progress) { progress.lastPlayed = new Date().toISOString(); localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(progress)); }
+    };
+    class AudioEngine {
+      constructor() { this.ctx = null; this.master = null; this.musicTimer = 0; this.musicStep = 0; this.musicOn = true; }
+      ensure() { if (this.ctx) return; this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = 0.1; this.master.connect(this.ctx.destination); }
+      beep(freq = 440, dur = 0.08, type = "square", vol = 0.3) { this.ensure(); const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, t); gain.gain.setValueAtTime(0.0001, t); gain.gain.exponentialRampToValueAtTime(vol, t + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); osc.connect(gain); gain.connect(this.master); osc.start(t); osc.stop(t + dur + 0.02); }
+      noise(dur = 0.2, vol = 0.08) { this.ensure(); const len = this.ctx.sampleRate * dur; const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1; const src = this.ctx.createBufferSource(); src.buffer = buffer; const gain = this.ctx.createGain(); const t = this.ctx.currentTime; gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(gain).connect(this.master); src.start(t); }
+      playShoot() { this.beep(520, 0.05); this.beep(760, 0.07); }
+      playGoal() { this.beep(660, 0.1); this.beep(880, 0.12); this.noise(0.35, 0.06); }
+      playWhistle() { this.beep(1100, 0.08, "sawtooth", 0.15); }
+      playCorrect() { this.beep(740, 0.08); this.beep(980, 0.1); }
+      playWrong() { this.beep(240, 0.12, "square", 0.2); }
+      update(dt) { if (!this.musicOn || !this.ctx) return; this.musicTimer -= dt; if (this.musicTimer > 0) return; const seq = [220, 330, 440, 330, 262, 349, 523, 349]; this.beep(seq[this.musicStep % seq.length], 0.12, "square", 0.06); this.musicStep++; this.musicTimer = 0.22; }
+    }
+    const audio = new AudioEngine();
+    addEventListener("pointerdown", () => audio.ensure(), { once: true });
+    addEventListener("keydown", () => audio.ensure(), { once: true });
+    const SpriteRenderer = { drawPixelSprite(ctx, grid, x, y, scale, palette) { for (let r = 0; r < grid.length; r++) for (let c = 0; c < grid[r].length; c++) { const i = grid[r][c]; if (i < 0) continue; ctx.fillStyle = palette[i] || "#fff"; ctx.fillRect((x + c) | 0, (y + r) | 0, scale, scale); } } };
+    const Sprites = {
+      skater: { grid: [[-1,1,1,-1],[1,2,2,1],[1,3,3,1],[-1,4,4,-1]], palette: ["#000","#222","#ddd","#4db2ff","#999"] },
+      footballer: { grid: [[-1,1,1,-1],[1,2,2,1],[1,3,3,1],[4,-1,-1,4]], palette: ["#000","#222","#f1d0aa","#58d35f","#555"] },
+      baller: { grid: [[-1,1,1,-1],[1,2,2,1],[1,3,3,1],[4,-1,-1,4]], palette: ["#000","#222","#f1d0aa","#ff9f3f","#666"] }
+    };
+    const Physics = {
+      add(a, b) { return { x: a.x + b.x, y: a.y + b.y }; }, scale(v, s) { return { x: v.x * s, y: v.y * s }; }, length(v) { return Math.hypot(v.x, v.y); },
+      normalize(v) { const l = Math.hypot(v.x, v.y) || 1; return { x: v.x / l, y: v.y / l }; }, dot(a, b) { return a.x * b.x + a.y * b.y; },
+      aabb(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; },
+      circleRect(c, r) { const cx = Math.max(r.x, Math.min(c.x, r.x + r.w)); const cy = Math.max(r.y, Math.min(c.y, r.y + r.h)); const dx = c.x - cx; const dy = c.y - cy; return dx * dx + dy * dy <= c.r * c.r; }
+    };
+    class QuizEngine {
+      constructor(bank) { this.bank = bank; this.pool = []; this.current = null; this.correct = 0; this.attempted = 0; this.timeLeft = 15; }
+      loadQuestions(sport) { const all = [...(this.bank[sport] || [])]; for (let i = all.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [all[i], all[j]] = [all[j], all[i]]; } this.pool = all; this.correct = 0; this.attempted = 0; return this.getNext(); }
+      getNext() { this.current = this.pool.shift() || null; this.timeLeft = 15; return this.current; }
+      submitAnswer(choice) { if (!this.current) return { ok: false }; this.attempted++; const ok = choice === this.current.answer; if (ok) this.correct++; return { ok, explanation: this.current.explanation }; }
+      getScore() { return { correct: this.correct, attempted: this.attempted }; }
+    }
+    const QUESTION_BANK = {
+      hockey: [
+        { q: "A puck travels 5m in 2s. Speed?", choices: ["2.5 m/s","10 m/s","7 m/s","1 m/s"], answer: 0, explanation: "Speed = distance ÷ time = 5 ÷ 2 = 2.5 m/s." },
+        { q: "0 to 6 m/s in 3s. Acceleration?", choices: ["18","2","3","6"], answer: 1, explanation: "a = Δv ÷ t = 6 ÷ 3 = 2 m/s²." },
+        { q: "More friction means the puck slides further.", choices: ["True","False","Only on grass","Only in goals"], answer: 1, explanation: "Higher friction slows motion faster." },
+        { q: "Force formula is:", choices: ["F = m + a","F = m × a","F = a ÷ m","F = m - a"], answer: 1, explanation: "Newton's second law." },
+        { q: "Icing happens when puck crosses center and:", choices: ["Hits goalie first","Crosses goal line untouched","Touches board","Is airborne"], answer: 1, explanation: "Untouched crossing to end line triggers icing." },
+        { q: "Ice has ____ friction than grass.", choices: ["More","Equal","Less","No"], answer: 2, explanation: "Ice generally has less friction." },
+        { q: "Angle in equals angle out describes:", choices: ["Dribbling","Reflection","Offside","Acceleration"], answer: 1, explanation: "Law of reflection." },
+        { q: "If distance doubles in same time, speed:", choices: ["Halves","Stays","Doubles","Random"], answer: 2, explanation: "Speed increases proportionally." },
+        { q: "Offside (simplified) means attacker enters zone:", choices: ["After puck","Before puck","With goalie","At center"], answer: 1, explanation: "Attacker cannot precede puck." },
+        { q: "Units of acceleration:", choices: ["m/s","m/s²","N","kg"], answer: 1, explanation: "Acceleration uses per-second change in speed." }
+      ],
+      football: [
+        { q: "Pitch 100m by 68m perimeter?", choices: ["168","336","680","136"], answer: 1, explanation: "Perimeter = 2(100 + 68) = 336m." },
+        { q: "Run 8 m/s for 15s distance?", choices: ["90","120","105","60"], answer: 1, explanation: "Distance = speed × time = 120m." },
+        { q: "W=3 D=2 L=1 GF=9 GA=5 goal difference?", choices: ["4","5","3","14"], answer: 0, explanation: "GD = 9 - 5 = 4." },
+        { q: "Keeper dives L/R with 50% each. You shoot left. Score probability?", choices: ["25%","50%","75%","100%"], answer: 1, explanation: "Half the time keeper goes opposite side." },
+        { q: "Magnus effect comes from:", choices: ["Spin","Gravity","Friction only","Heat"], answer: 0, explanation: "Spin changes pressure around the ball." },
+        { q: "Offside is judged when pass is:", choices: ["Received","Played","Shot","Saved"], answer: 1, explanation: "Position at pass moment matters." },
+        { q: "A yellow card is:", choices: ["Warning","Ejection","Goal","Restart"], answer: 0, explanation: "Two yellows lead to red." },
+        { q: "A throw-in restarts after:", choices: ["Foul","Ball crosses touchline","Goal","Offside"], answer: 1, explanation: "Touchline exits use throw-ins." },
+        { q: "Penalty spot distance in spec is about:", choices: ["11m","7m","20m","5m"], answer: 0, explanation: "Penalty mark is 11m from goal line." },
+        { q: "Geometry of shooting angle improves when:", choices: ["Closer to center","Farther and narrower","Ball stopped","Keeper absent"], answer: 0, explanation: "Central positions widen effective goal angle." }
+      ],
+      basketball: [
+        { q: "Court length 28m, twice end-to-end distance?", choices: ["42","56","84","28"], answer: 1, explanation: "28 × 2 = 56m." },
+        { q: "A=12 points, B=8. Fraction by A?", choices: ["3/5","2/3","1/2","4/5"], answer: 0, explanation: "12 out of 20 = 3/5." },
+        { q: "45° launch vs 30° at same speed goes:", choices: ["Lower","Same","Higher","Random"], answer: 2, explanation: "Higher angle gives greater vertical component." },
+        { q: "7 of 10 free throws percentage?", choices: ["60%","70%","75%","80%"], answer: 1, explanation: "7/10 = 70%." },
+        { q: "Shot clock in standard pro rules:", choices: ["12s","24s","30s","35s"], answer: 1, explanation: "24-second shot clock." },
+        { q: "Traveling means:", choices: ["No dribble while moving","Out of bounds","Delay game","Jump ball"], answer: 0, explanation: "Steps without legal dribble." },
+        { q: "Projectile equation y includes:", choices: ["+0.5gt²","-0.5gt²","-gt","None"], answer: 1, explanation: "Gravity subtracts from vertical position." },
+        { q: "Best shot arc often around:", choices: ["10°","20°","45°-52°","80°"], answer: 2, explanation: "Balanced height and distance." },
+        { q: "A 3-pointer is worth:", choices: ["2","3","1","4"], answer: 1, explanation: "Beyond arc counts three points." },
+        { q: "Double dribble is:", choices: ["Two players dribbling","Dribble-catch-dribble","Two bounces","Fast dribble"], answer: 1, explanation: "Illegal restart of dribble." }
+      ]
+    };
+    const quizEngine = new QuizEngine(QUESTION_BANK);
+    class ParticleSystem {
+      constructor() { this.list = []; }
+      spawn(x, y, type) { const count = type === "GOAL" ? 50 : type === "LEVELUP" ? 80 : 20; for (let i = 0; i < count; i++) { const a = Math.random() * Math.PI * 2; const sp = (type === "LEVELUP" ? 120 : 80) * (0.3 + Math.random()); this.list.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, type, color: type === "CORRECT" ? "#6bff8d" : ["#ff5f5f","#ffd34d","#5fc2ff","#ffffff"][i % 4] }); } }
+      update(dt) { for (const p of this.list) { p.life -= dt * (p.type === "LEVELUP" ? 0.4 : 1.2); p.vy += 250 * dt; p.x += p.vx * dt; p.y += p.vy * dt; } this.list = this.list.filter(p => p.life > 0); }
+      render(ctx) { for (const p of this.list) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color; ctx.fillRect((p.x | 0), (p.y | 0), 3, 3); } ctx.globalAlpha = 1; }
+    }
+    const particles = new ParticleSystem();
+    class LessonEngine {
+      constructor(progress) { this.progress = progress; this.mastery = {}; }
+      record(sport, topic, ok) { const key = `${sport}_${topic}`; this.mastery[key] = this.mastery[key] || 0; if (ok) this.mastery[key]++; if (this.mastery[key] >= 3 && !this.progress.badges[key]) { this.progress.badges[key] = true; particles.spawn(CONFIG.WIDTH / 2, 60, "LEVELUP"); } }
+    }
+    const GameState = { scene: CONFIG.STATES.HUB, activeGame: null, score: { player: 0, ai: 0 }, xp: 0, lives: 3, timer: 120, popupQueue: [], progress: Storage.load(), lesson: null, quizSport: null, shotClock: 24 };
+    GameState.lesson = new LessonEngine(GameState.progress);
+    function applySettings() { document.documentElement.style.setProperty("--crt", GameState.progress.settings.highContrast ? 0 : 1); document.documentElement.style.setProperty("--font-scale", GameState.progress.settings.largeFont ? 1.15 : 1); document.documentElement.style.setProperty("--accent", GameState.progress.settings.colorBlind ? "#5fc2ff" : "#ffd34d"); document.documentElement.style.setProperty("--danger", GameState.progress.settings.colorBlind ? "#ff9f3f" : "#ff5f5f"); document.documentElement.style.setProperty("--good", GameState.progress.settings.colorBlind ? "#5fc2ff" : "#51ff8a"); }
+    applySettings();
+    function addXP(n) { GameState.xp = Math.min(100, GameState.xp + n); if (GameState.xp >= 100) { GameState.xp = 0; particles.spawn(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, "LEVELUP"); audio.playCorrect(); } }
+    function queuePopup(title, body, choices = null, onChoice = null) { GameState.popupQueue.push({ title, body, choices, onChoice }); showNextPopup(); }
+    function showNextPopup() {
+      if (overlayUI.childElementCount || !GameState.popupQueue.length) return;
+      const p = GameState.popupQueue.shift();
+      const card = document.createElement("div");
+      card.className = "overlay-card panel";
+      let html = `<div><strong>${p.title}</strong></div><div style="margin-top:6px; line-height:1.35">${p.body}</div>`;
+      html += !p.choices ? `<div class="btn-row"><button data-c="ok">OK</button><button data-c="skip">CONTINUE</button></div>` : `<div class="choices">${p.choices.map((c, i) => `<button data-c="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
+      card.innerHTML = html;
+      overlayUI.appendChild(card);
+      card.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", () => { const val = btn.dataset.c; overlayUI.innerHTML = ""; if (p.onChoice) p.onChoice(val === "ok" || val === "skip" ? null : Number(val)); showNextPopup(); }));
+      card.querySelector("button")?.focus();
+    }
+    function makeBaseGame(sport) { return { sport, name: sport, period: 1, modeIndex: 0, started: false, ruleFlags: {}, popFlags: {}, init(mode = 0) { this.modeIndex = mode; this.started = true; this.period = 1; GameState.timer = 120; GameState.shotClock = 24; GameState.score.player = 0; GameState.score.ai = 0; GameState.lives = 3; }, destroy() { this.started = false; } }; }
+    const Hockey = {
+      ...makeBaseGame("hockey"),
+      modes: ["CLASSIC MATCH"],
+      init(mode = 0) { makeBaseGame("hockey").init.call(this, mode); this.player = { x: 120, y: 230, w: 12, h: 12, vx: 0, vy: 0 }; this.ai = [{ x: 490, y: 180, w: 12, h: 12, state: "CHASE" }, { x: 520, y: 280, w: 12, h: 12, state: "DEFEND" }]; this.puck = { x: 320, y: 240, vx: -50, vy: 25, r: 6 }; this.charge = 0; this.firstShot = false; this.quizDone = false; },
+      update(dt) {
+        const p = this.player, dir = { x: 0, y: 0 };
+        if (Input.down.has("w") || Input.down.has("arrowup")) dir.y -= 1;
+        if (Input.down.has("s") || Input.down.has("arrowdown")) dir.y += 1;
+        if (Input.down.has("a") || Input.down.has("arrowleft")) dir.x -= 1;
+        if (Input.down.has("d") || Input.down.has("arrowright")) dir.x += 1;
+        const n = Physics.normalize(dir);
+        p.vx += n.x * 300 * dt; p.vy += n.y * 300 * dt;
+        const sp = Math.hypot(p.vx, p.vy); if (sp > 120) { p.vx = p.vx / sp * 120; p.vy = p.vy / sp * 120; }
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.88; p.vy *= 0.88; p.x = Math.max(20, Math.min(608, p.x)); p.y = Math.max(36, Math.min(444, p.y));
+        if (Input.down.has(" ")) this.charge = Math.min(1, this.charge + dt * 0.8);
+        if (Input.released.has(" ")) {
+          const toPuck = Physics.normalize({ x: this.puck.x - p.x, y: this.puck.y - p.y });
+          this.puck.vx += toPuck.x * (180 + 240 * this.charge); this.puck.vy += toPuck.y * (180 + 240 * this.charge); this.charge = 0; audio.playShoot();
+          if (!this.firstShot) { this.firstShot = true; queuePopup("PHYSICS FACT!", "You just applied FORCE! Force = Mass × Acceleration. Shot power changed puck acceleration."); }
+        }
+        this.puck.x += this.puck.vx * dt; this.puck.y += this.puck.vy * dt; this.puck.vx *= 0.985; this.puck.vy *= 0.985;
+        let bounced = false;
+        if (this.puck.y < 28 || this.puck.y > 452) { this.puck.vy *= -0.7; bounced = true; }
+        if (this.puck.x < 10 || this.puck.x > 630) { this.puck.vx *= -0.7; bounced = true; }
+        if (bounced && !this.popFlags.bounce) { this.popFlags.bounce = true; queuePopup("ANGLE OF REFLECTION!", "The puck bounced with matching in/out angle: angle in = angle out."); GameState.lesson.record("hockey", "physics", true); }
+        for (const ai of this.ai) { ai.state = this.puck.x > 360 ? "CHASE" : "DEFEND"; const tgt = ai.state === "CHASE" ? this.puck : { x: 560, y: ai.y < 240 ? 160 : 320 }; const v = Physics.normalize({ x: tgt.x - ai.x, y: tgt.y - ai.y }); ai.x += v.x * 70 * dt; ai.y += v.y * 70 * dt; if (Math.hypot(ai.x - this.puck.x, ai.y - this.puck.y) < 16) { this.puck.vx += (Math.random() < 0.5 ? -1 : 1) * 160; this.puck.vy += (Math.random() - 0.5) * 120; } }
+        if (Math.hypot(p.x - this.puck.x, p.y - this.puck.y) < 16) { this.puck.vx += (this.puck.x - p.x) * 6; this.puck.vy += (this.puck.y - p.y) * 6; }
+        if (this.puck.x < 18 && this.puck.y > 190 && this.puck.y < 290) { GameState.score.ai++; resetPuck(this.puck, 1); audio.playGoal(); particles.spawn(24, this.puck.y, "GOAL"); }
+        if (this.puck.x > 622 && this.puck.y > 190 && this.puck.y < 290) { GameState.score.player++; resetPuck(this.puck, -1); addXP(12); audio.playGoal(); particles.spawn(616, this.puck.y, "GOAL"); GameState.lesson.record("hockey", "rules", true); }
+        if (GameState.timer < 90 && !this.popFlags.frictionQuiz) {
+          this.popFlags.frictionQuiz = true;
+          queuePopup("FRICTION QUIZ!", "Ice has LOW friction. Which surface has MORE friction?", ["Ice", "Grass", "Sand"], (i) => { const ok = i === 2; if (ok) { addXP(50); GameState.score.player += 1; audio.playCorrect(); } else audio.playWrong(); GameState.lesson.record("hockey", "physics", ok); });
+        }
+        if (GameState.timer < 60 && !this.popFlags.icing) { this.popFlags.icing = true; queuePopup("ICING RULE", "If a puck crosses center and goal line untouched, icing is called and play resets."); GameState.lesson.record("hockey", "rules", true); }
+        if (GameState.timer < 55 && !this.popFlags.offside) { this.popFlags.offside = true; queuePopup("OFFSIDE", "Attacker cannot enter offensive zone before the puck (simplified rule)."); GameState.lesson.record("hockey", "rules", true); }
+        if (GameState.timer < 35 && !this.popFlags.penalty) { this.popFlags.penalty = true; queuePopup("PENALTY SHOT", "A foul can award a penalty shot or power play advantage."); GameState.lesson.record("hockey", "rules", true); }
+        if (GameState.timer < 40 && this.period < 3 && !this.quizDone) { this.quizDone = true; startQuiz("hockey"); }
+      },
+      render(ctx) {
+        ctx.fillStyle = "#eaf8ff"; ctx.fillRect(0, 24, 640, 432); ctx.strokeStyle = "#8fd4ff"; ctx.lineWidth = 2; ctx.strokeRect(10, 28, 620, 424);
+        ctx.strokeStyle = "#e34646"; ctx.beginPath(); ctx.arc(320, 240, 40, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "#3866ff"; ctx.beginPath(); ctx.moveTo(213, 28); ctx.lineTo(213, 452); ctx.moveTo(426, 28); ctx.lineTo(426, 452); ctx.stroke();
+        ctx.strokeStyle = "#fff"; ctx.strokeRect(2, 190, 14, 100); ctx.strokeRect(624, 190, 14, 100);
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.skater.grid, this.player.x - 6, this.player.y - 6, 3, Sprites.skater.palette);
+        for (const ai of this.ai) SpriteRenderer.drawPixelSprite(ctx, Sprites.skater.grid, ai.x - 6, ai.y - 6, 3, ["#000","#222","#ddd","#ff6b6b","#999"]);
+        ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(this.puck.x, this.puck.y, 6, 0, Math.PI * 2); ctx.fill();
+        if (Input.down.has(" ")) { ctx.fillStyle = "#222"; ctx.fillRect(20, 462, 180, 10); ctx.fillStyle = "#ffcf49"; ctx.fillRect(20, 462, 180 * this.charge, 10); }
+      }
+    };
+    const Football = {
+      ...makeBaseGame("football"),
+      modes: ["PENALTY SHOOTOUT", "DRIBBLE CHALLENGE", "MATCH MODE"],
+      init(mode = 0) { makeBaseGame("football").init.call(this, mode); this.player = { x: 120, y: 240, w: 10, h: 10 }; this.teammate = { x: 180, y: 280 }; this.ball = { x: 140, y: 240, r: 8, vx: 0, vy: 0, spin: 0 }; this.gk = { x: 566, y: 240, targetY: 240, delay: 0 }; this.kicks = 0; this.curveShown = false; this.popFlags = {}; },
+      update(dt) {
+        const d = { x: 0, y: 0 };
+        if (Input.down.has("w") || Input.down.has("arrowup")) d.y -= 1;
+        if (Input.down.has("s") || Input.down.has("arrowdown")) d.y += 1;
+        if (Input.down.has("a") || Input.down.has("arrowleft")) d.x -= 1;
+        if (Input.down.has("d") || Input.down.has("arrowright")) d.x += 1;
+        const n = Physics.normalize(d); this.player.x += n.x * 110 * dt; this.player.y += n.y * 110 * dt; this.player.x = Math.max(20, Math.min(500, this.player.x)); this.player.y = Math.max(70, Math.min(410, this.player.y));
+        if (Math.hypot(this.ball.x - this.player.x, this.ball.y - this.player.y) < 20) { this.ball.x += (this.player.x - this.ball.x) * 0.15; this.ball.y += (this.player.y - this.ball.y) * 0.15; }
+        if (Input.pressed.has("shift")) { this.ball.vx = (this.teammate.x - this.ball.x) * 1.8; this.ball.vy = (this.teammate.y - this.ball.y) * 1.8; audio.playShoot(); }
+        if (Input.released.has(" ")) {
+          const aim = Physics.normalize({ x: 600 - this.player.x, y: (this.player.y - 240) * -0.2 });
+          this.ball.vx += aim.x * 220; this.ball.vy += aim.y * 220; this.ball.spin = (Input.down.has("a") || Input.down.has("arrowleft") ? -1 : 0) + (Input.down.has("d") || Input.down.has("arrowright") ? 1 : 0); this.kicks++; audio.playShoot();
+          if (!this.popFlags.firstPenalty) { this.popFlags.firstPenalty = true; queuePopup("GEOMETRY TIME!", "From 11m, wider shooting angle makes saves harder."); GameState.lesson.record("football", "geometry", true); }
+          if (this.ball.spin && !this.curveShown) { this.curveShown = true; queuePopup("SPIN PHYSICS!", "You curved the ball with spin (Magnus effect)."); GameState.lesson.record("football", "physics", true); }
+        }
+        this.ball.vx *= 0.96; this.ball.vy *= 0.96; this.ball.vy += this.ball.spin * 12 * dt; this.ball.x += this.ball.vx * dt; this.ball.y += this.ball.vy * dt;
+        if (this.ball.y < 58 || this.ball.y > 422) this.ball.vy *= -0.7;
+        if (this.ball.x < 8) this.ball.vx *= -0.7;
+        this.gk.delay -= dt;
+        if (this.gk.delay <= 0) { this.gk.targetY = this.ball.y; this.gk.delay = 0.18; }
+        this.gk.y += Math.sign(this.gk.targetY - this.gk.y) * 80 * dt; this.gk.y = Math.max(170, Math.min(310, this.gk.y));
+        if (Math.hypot(this.ball.x - this.gk.x, this.ball.y - this.gk.y) < 18) { this.ball.vx *= -0.85; this.ball.vy += (Math.random() - 0.5) * 120; audio.playWhistle(); }
+        if (this.ball.x > 622 && this.ball.y > 180 && this.ball.y < 300) { GameState.score.player++; addXP(10); particles.spawn(620, this.ball.y, "GOAL"); audio.playGoal(); queuePopup("PROBABILITY QUIZ!", "Keeper dives left/right with 50% chance each. Shoot left: 50% score chance."); GameState.lesson.record("football", "statistics", true); this.ball = { x: 140, y: 240, r: 8, vx: 0, vy: 0, spin: 0 }; }
+        if (GameState.timer < 90 && !this.popFlags.rules1) { this.popFlags.rules1 = true; queuePopup("OFFSIDE RULE", "A player is offside if ahead of ball and second-last defender when pass is played."); GameState.lesson.record("football", "rules", true); }
+        if (GameState.timer < 70 && !this.popFlags.rules2) { this.popFlags.rules2 = true; queuePopup("CARDS", "Yellow is a warning. Red means dismissal."); GameState.lesson.record("football", "rules", true); }
+        if (GameState.timer < 55 && !this.popFlags.rules3) { this.popFlags.rules3 = true; queuePopup("RESTARTS", "Corner kick, throw-in, and goal kick restart play depending on last touch and where ball exits."); GameState.lesson.record("football", "rules", true); }
+        if (GameState.timer < 45 && !this.popFlags.var) { this.popFlags.var = true; queuePopup("VAR CHECKING...", "Decision: GOAL STANDS ✅"); }
+        if (this.modeIndex === 0 && this.kicks === 3 && !this.popFlags.halfQuiz) { this.popFlags.halfQuiz = true; startQuiz("football"); }
+      },
+      render(ctx) {
+        ctx.fillStyle = "#3f9f4f"; ctx.fillRect(0, 24, 640, 432); ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(8, 58, 624, 364); ctx.beginPath(); ctx.arc(320, 240, 45, 0, Math.PI * 2); ctx.stroke(); ctx.strokeRect(520, 160, 112, 160); ctx.strokeRect(560, 190, 72, 100); ctx.strokeRect(620, 180, 18, 120);
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.footballer.grid, this.player.x - 6, this.player.y - 6, 3, Sprites.footballer.palette);
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.footballer.grid, this.teammate.x - 6, this.teammate.y - 6, 3, ["#000","#222","#f1d0aa","#5fc2ff","#555"]);
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.footballer.grid, this.gk.x - 6, this.gk.y - 8, 3, ["#000","#222","#f1d0aa","#ff9f3f","#555"]);
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(this.ball.x, this.ball.y, this.ball.r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#111"; ctx.fillRect(this.ball.x - 2, this.ball.y - 2, 3, 3);
+      }
+    };
+    const Basketball = {
+      ...makeBaseGame("basketball"),
+      modes: ["FREE THROW", "3-POINT CONTEST", "1-on-1 MATCH"],
+      init(mode = 0) { makeBaseGame("basketball").init.call(this, mode); this.player = { x: 120, y: 370, w: 12, h: 14, dribble: false, steps: 0 }; this.ai = { x: 420, y: 370 }; this.ball = { x: 145, y: 355, vx: 0, vy: 0, airborne: false, r: 7 }; this.charge = 0; this.shotTrail = []; this.popFlags = {}; },
+      update(dt) {
+        const left = Input.down.has("a") || Input.down.has("arrowleft"), right = Input.down.has("d") || Input.down.has("arrowright");
+        if (left) { this.player.x -= 110 * dt; this.player.steps += dt * 3; }
+        if (right) { this.player.x += 110 * dt; this.player.steps += dt * 3; }
+        this.player.x = Math.max(20, Math.min(500, this.player.x));
+        if (Input.down.has("shift")) { this.player.dribble = true; this.player.steps = 0; }
+        if (Input.released.has("shift")) this.player.dribble = false;
+        if (!this.ball.airborne) { this.ball.x = this.player.x + 22; this.ball.y = this.player.dribble ? 370 + Math.sin(performance.now() * 0.02) * 14 : 350; }
+        this.ai.x += Math.sign(this.player.x - this.ai.x) * 70 * dt;
+        if (Input.down.has(" ")) { this.charge = Math.min(1, this.charge + dt * 0.9); this.computeTrail(); }
+        if (Input.released.has(" ") && !this.ball.airborne) {
+          const angle = ((Input.down.has("arrowup") ? 52 : 45) * Math.PI) / 180, speed = 420 + this.charge * 260;
+          this.ball.airborne = true; this.ball.vx = Math.cos(angle) * speed; this.ball.vy = -Math.sin(angle) * speed; this.charge = 0; this.shotTrail.length = 0; audio.playShoot();
+          if (!this.popFlags.firstShot) { this.popFlags.firstShot = true; queuePopup("PROJECTILE MOTION!", "Your shot follows a PARABOLA."); queuePopup("OPTIMAL ANGLE!", "Great angles are often 45°–52° for height and distance."); GameState.lesson.record("basketball", "physics", true); GameState.lesson.record("basketball", "geometry", true); }
+        }
+        if (this.ball.airborne) {
+          this.ball.vy += 980 * dt; this.ball.x += this.ball.vx * dt; this.ball.y += this.ball.vy * dt;
+          const rim = { x: 560, y: 180, r: 12 }, dx = this.ball.x - rim.x, dy = this.ball.y - rim.y;
+          if (dx * dx + dy * dy < (this.ball.r + rim.r) * (this.ball.r + rim.r)) { this.ball.vx *= -0.55; this.ball.vy *= 0.65; }
+          if (this.ball.x > 550 && this.ball.x < 570 && this.ball.y > 178 && this.ball.y < 188 && this.ball.vy > 0) { GameState.score.player += this.modeIndex === 1 ? 3 : 2; addXP(15); particles.spawn(560, 188, "GOAL"); audio.playGoal(); queuePopup("STATS QUIZ!", "7/10 free throws = 70%."); GameState.lesson.record("basketball", "statistics", true); this.ball.airborne = false; }
+          if (this.ball.y > 420 || this.ball.x > 650) this.ball.airborne = false;
+        }
+        if (!this.player.dribble && this.player.steps > 3 && !this.popFlags.travel) { this.popFlags.travel = true; audio.playWhistle(); queuePopup("TRAVELING", "Taking 3+ steps without dribbling is traveling."); GameState.lesson.record("basketball", "rules", true); }
+        if (this.player.dribble && Input.released.has("shift") && !this.popFlags.double) { this.popFlags.double = true; queuePopup("DOUBLE DRIBBLE", "Dribble, stop, then dribble again is illegal."); GameState.lesson.record("basketball", "rules", true); }
+        GameState.shotClock -= dt; if (GameState.shotClock <= 0) { GameState.shotClock = 24; queuePopup("24-SECOND RULE", "Teams must attempt a shot before the shot clock expires."); }
+        if (GameState.timer < 65 && !this.popFlags.quiz) { this.popFlags.quiz = true; startQuiz("basketball"); }
+      },
+      computeTrail() { this.shotTrail.length = 0; const angle = ((Input.down.has("arrowup") ? 52 : 45) * Math.PI) / 180, speed = 420 + this.charge * 260; let x = this.player.x + 22, y = 350, vx = Math.cos(angle) * speed, vy = -Math.sin(angle) * speed; for (let i = 0; i < 20; i++) { const t = 0.06; vy += 980 * t; x += vx * t; y += vy * t; this.shotTrail.push({ x, y }); } },
+      render(ctx) {
+        for (let y = 24; y < 456; y += 18) { ctx.fillStyle = (y / 18) % 2 ? "#cc7d32" : "#d7893e"; ctx.fillRect(0, y, 640, 18); }
+        ctx.strokeStyle = "#fff"; ctx.strokeRect(540, 90, 8, 100); ctx.strokeRect(548, 110, 40, 6); ctx.strokeStyle = "#ff9f3f"; ctx.beginPath(); ctx.arc(560, 180, 12, 0, Math.PI); ctx.stroke(); ctx.strokeStyle = "#ddd"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(550 + i * 4, 180); ctx.lineTo(552 + i * 3, 202); ctx.stroke(); } ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(560, 300, 140, Math.PI * 0.95, Math.PI * 1.7); ctx.stroke();
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.baller.grid, this.player.x - 6, this.player.y - 14, 3, Sprites.baller.palette);
+        SpriteRenderer.drawPixelSprite(ctx, Sprites.baller.grid, this.ai.x - 6, this.ai.y - 14, 3, ["#000","#222","#f1d0aa","#5fc2ff","#666"]);
+        ctx.fillStyle = "#ff8a2f"; ctx.beginPath(); ctx.arc(this.ball.x, this.ball.y, this.ball.r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#222"; ctx.beginPath(); ctx.arc(this.ball.x, this.ball.y, this.ball.r - 1, 0, Math.PI); ctx.stroke(); ctx.beginPath(); ctx.moveTo(this.ball.x - this.ball.r + 1, this.ball.y); ctx.lineTo(this.ball.x + this.ball.r - 1, this.ball.y); ctx.stroke();
+        if (this.shotTrail.length) { ctx.fillStyle = "#fff"; for (const p of this.shotTrail) ctx.fillRect(p.x, p.y, 2, 2); }
+      }
+    };
+    function resetPuck(puck, dir = 1) { puck.x = 320; puck.y = 240; puck.vx = 110 * dir; puck.vy = (Math.random() - 0.5) * 80; }
+    const Games = { hockey: Hockey, football: Football, basketball: Basketball };
+    function startGame(sport, mode = 0) { const g = Games[sport]; GameState.activeGame = g; GameState.scene = CONFIG.STATES.GAME_LOADING; setTimeout(() => { g.init(mode); GameState.scene = CONFIG.STATES.PLAYING; mountInGameHUD(sport); }, 180); }
+    function endGame() {
+      const sport = GameState.activeGame?.sport;
+      if (sport) GameState.progress.highScores[sport] = Math.max(GameState.progress.highScores[sport] || 0, GameState.score.player);
+      Storage.save(GameState.progress);
+      GameState.activeGame?.destroy();
+      GameState.activeGame = null;
+      GameState.scene = CONFIG.STATES.SCORE_SCREEN;
+      showScoreScreen();
+    }
+    function startQuiz(sport) { GameState.scene = CONFIG.STATES.QUIZ; GameState.quizSport = sport; quizEngine.loadQuestions(sport); renderQuiz(); }
+    function renderQuiz() {
+      const q = quizEngine.current || quizEngine.getNext();
+      if (!q) {
+        const score = quizEngine.getScore();
+        GameState.progress.quizStats.correct += score.correct;
+        GameState.progress.quizStats.attempted += score.attempted;
+        Storage.save(GameState.progress);
+        overlayUI.innerHTML = "";
+        GameState.scene = CONFIG.STATES.PLAYING;
+        if (GameState.activeGame && GameState.activeGame.period < 3) GameState.activeGame.period++;
+        return;
+      }
+      const card = document.createElement("div");
+      card.className = "overlay-card panel";
+      card.innerHTML = `<div><strong>QUIZ • ${GameState.quizSport.toUpperCase()}</strong></div><div style="margin-top:6px">${q.q}</div><div class="progress-bar"><span id="qTimer"></span></div><div class="choices">${q.choices.map((c, i) => `<button data-i="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
+      overlayUI.innerHTML = "";
+      overlayUI.appendChild(card);
+      const timerBar = card.querySelector("#qTimer");
+      let alive = true;
+      const tick = () => { if (!alive || GameState.scene !== CONFIG.STATES.QUIZ) return; quizEngine.timeLeft -= 0.1; timerBar.style.transform = `scaleX(${Math.max(0, quizEngine.timeLeft / 15)})`; if (quizEngine.timeLeft <= 0) { alive = false; const res = quizEngine.submitAnswer(-1); if (!res.ok) audio.playWrong(); quizEngine.getNext(); setTimeout(renderQuiz, 200); return; } setTimeout(tick, 100); };
+      setTimeout(tick, 100);
+      card.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", () => {
+        if (!alive) return;
+        alive = false;
+        const idx = Number(btn.dataset.i), res = quizEngine.submitAnswer(idx);
+        if (res.ok) { audio.playCorrect(); addXP(14); particles.spawn(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, "CORRECT"); GameState.lesson.record(GameState.quizSport, "statistics", true); } else audio.playWrong();
+        queuePopup(res.ok ? "CORRECT" : "WRONG", res.explanation);
+        quizEngine.getNext();
+        setTimeout(renderQuiz, 250);
+      }));
+      card.querySelector("button")?.focus();
+    }
+    function mountHub() {
+      GameState.scene = CONFIG.STATES.HUB;
+      overlayUI.innerHTML = "";
+      hubUI.innerHTML = `<div class="hub"><div class="panel marquee">SPORT ACADEMY</div><div class="hub-main"><div class="panel cabinets">${["hockey","football","basketball"].map((g, i) => `<button class="cabinet" data-game="${g}" tabindex="${i + 1}"><div class="thumb">${g === "hockey" ? "🏒" : g === "football" ? "⚽" : "🏀"}</div><div>${g.toUpperCase()}</div><small style="opacity:.85">${Games[g].modes.join(" • ")}</small></button>`).join("")}</div><div class="side-col"><div class="panel"><div><strong>TOP SCORES</strong></div><table><tr><th>GAME</th><th>SCORE</th></tr><tr><td>HOCKEY</td><td>${GameState.progress.highScores.hockey}</td></tr><tr><td>FOOTBALL</td><td>${GameState.progress.highScores.football}</td></tr><tr><td>BASKETBALL</td><td>${GameState.progress.highScores.basketball}</td></tr><tr><td>QUIZ CORRECT</td><td>${GameState.progress.quizStats.correct}</td></tr><tr><td>QUIZ ATTEMPTED</td><td>${GameState.progress.quizStats.attempted}</td></tr></table></div><div class="panel settings"><label>STUDENT <input id="studentInput" maxlength="12" value="${GameState.progress.studentName}" /></label><label><input type="checkbox" id="setContrast" ${GameState.progress.settings.highContrast ? "checked" : ""}/> HIGH CONTRAST</label><label><input type="checkbox" id="setLarge" ${GameState.progress.settings.largeFont ? "checked" : ""}/> LARGE FONT</label><label><input type="checkbox" id="setCB" ${GameState.progress.settings.colorBlind ? "checked" : ""}/> COLOR-BLIND MODE</label><button id="openProgress">LESSON PROGRESS</button></div><div class="insert-coin">INSERT COIN • PRESS A CABINET</div></div></div><div class="panel" style="font-size:12px; text-align:center;">KEYBOARD: WASD/ARROWS MOVE • SPACE SHOOT • SHIFT SKILL • ESC PAUSE</div></div>`;
+      hubUI.querySelectorAll(".cabinet").forEach(btn => btn.addEventListener("click", () => openModePicker(btn.dataset.game)));
+      hubUI.querySelector("#studentInput").addEventListener("change", (e) => { GameState.progress.studentName = e.target.value.trim().toUpperCase() || "PLAYER1"; Storage.save(GameState.progress); });
+      const syncSetting = (id, key) => hubUI.querySelector(id).addEventListener("change", (e) => { GameState.progress.settings[key] = !!e.target.checked; applySettings(); Storage.save(GameState.progress); });
+      syncSetting("#setContrast", "highContrast"); syncSetting("#setLarge", "largeFont"); syncSetting("#setCB", "colorBlind");
+      hubUI.querySelector("#openProgress").addEventListener("click", showProgressPanel);
+      hubUI.querySelector(".cabinet")?.focus();
+    }
+    function showProgressPanel() {
+      const topics = ["physics","geometry","statistics","rules"], sports = ["hockey","football","basketball"], badges = sports.flatMap((s) => topics.map((t) => `${s}_${t}`));
+      queuePopup("LESSON PROGRESS", `<div class="badge-grid">${badges.map((k) => `<div class="badge ${GameState.progress.badges[k] ? "unlocked" : ""}">${k.replace("_", "<br/>")}${GameState.progress.badges[k] ? "<br/>UNLOCKED" : "<br/>LOCKED"}</div>`).join("")}</div>`);
+    }
+    function openModePicker(sport) {
+      const game = Games[sport];
+      GameState.scene = CONFIG.STATES.GAME_SELECT;
+      const card = document.createElement("div");
+      card.className = "overlay-card panel";
+      card.innerHTML = `<div><strong>${sport.toUpperCase()} MODE SELECT</strong></div><div class="choices">${game.modes.map((m, i) => `<button data-i="${i}">${m}</button>`).join("")}</div><div class="btn-row"><button id="backHub">BACK</button><button id="classroomBtn">CLASSROOM MODE</button></div>`;
+      overlayUI.innerHTML = "";
+      overlayUI.appendChild(card);
+      card.querySelectorAll("[data-i]").forEach((b) => b.addEventListener("click", () => { hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, Number(b.dataset.i)); }));
+      card.querySelector("#backHub").addEventListener("click", () => { overlayUI.innerHTML = ""; mountHub(); });
+      card.querySelector("#classroomBtn").addEventListener("click", () => { GameState.score.player = 0; GameState.lives = 99; hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, 0); });
+    }
+    function mountInGameHUD(sport) {
+      hubUI.innerHTML = `<div class="hud"><div class="hud-top"><div>${sport.toUpperCase()} • ${GameState.progress.studentName}</div><div>P${GameState.score.player} - AI${GameState.score.ai}</div><div id="timer">02:00</div></div><div></div><div class="hud-bottom"><div>LIVES: <span id="lives"></span></div><div>SHOT CLOCK: <span id="shotClock">24</span></div><div class="xp-wrap"><div class="xp-fill" id="xpFill"></div></div></div></div>`;
+      updateHUD();
+    }
+    function showPauseMenu() {
+      GameState.scene = CONFIG.STATES.PAUSED;
+      const card = document.createElement("div");
+      card.className = "overlay-card panel";
+      card.innerHTML = `<div><strong>PAUSED</strong></div><div class="choices"><button id="resumeBtn">RESUME</button><button id="quizBtn">QUIZ REVIEW</button><button id="reportBtn">PROGRESS REPORT</button><button id="quitBtn">QUIT TO HUB</button></div>`;
+      overlayUI.innerHTML = "";
+      overlayUI.appendChild(card);
+      card.querySelector("#resumeBtn").addEventListener("click", () => { overlayUI.innerHTML = ""; GameState.scene = CONFIG.STATES.PLAYING; });
+      card.querySelector("#quizBtn").addEventListener("click", () => startQuiz(GameState.activeGame.sport));
+      card.querySelector("#reportBtn").addEventListener("click", () => queuePopup("PROGRESS REPORT", printableProgress()));
+      card.querySelector("#quitBtn").addEventListener("click", () => { overlayUI.innerHTML = ""; endGame(); });
+    }
+    function printableProgress() {
+      const p = GameState.progress;
+      return `STUDENT: ${p.studentName}<br/>HIGH SCORES: H ${p.highScores.hockey}, F ${p.highScores.football}, B ${p.highScores.basketball}<br/>QUIZ: ${p.quizStats.correct}/${p.quizStats.attempted}<br/>LAST PLAYED: ${p.lastPlayed}`;
+    }
+    function showScoreScreen() {
+      hubUI.innerHTML = "";
+      const card = document.createElement("div");
+      card.className = "overlay-card panel";
+      card.innerHTML = `<div><strong>GAME OVER</strong></div><div style="margin-top:8px">FINAL SCORE: ${GameState.score.player} - ${GameState.score.ai}</div><div style="margin-top:8px">XP: ${GameState.xp}</div><div class="btn-row"><button id="hubBack">RETURN TO HUB</button><button id="retryBtn">PLAY AGAIN</button></div>`;
+      overlayUI.innerHTML = "";
+      overlayUI.appendChild(card);
+      card.querySelector("#hubBack").addEventListener("click", () => { overlayUI.innerHTML = ""; mountHub(); });
+      card.querySelector("#retryBtn").addEventListener("click", () => { const sport = GameState.activeGame?.sport || "hockey"; overlayUI.innerHTML = ""; startGame(sport, 0); });
+    }
+    function updateHUD() {
+      const timer = hubUI.querySelector("#timer"), lives = hubUI.querySelector("#lives"), xpFill = hubUI.querySelector("#xpFill"), shotClock = hubUI.querySelector("#shotClock");
+      if (timer) { const m = Math.max(0, GameState.timer) / 60, mm = Math.floor(m).toString().padStart(2, "0"), ss = Math.floor((m % 1) * 60).toString().padStart(2, "0"); timer.textContent = `${mm}:${ss}`; }
+      if (lives) { const icon = GameState.activeGame?.sport === "hockey" ? "🏒" : GameState.activeGame?.sport === "football" ? "⚽" : "🏀"; lives.textContent = icon.repeat(Math.max(1, Math.min(3, GameState.lives))); }
+      if (xpFill) xpFill.style.width = `${GameState.xp}%`;
+      if (shotClock) shotClock.textContent = `${Math.max(0, Math.ceil(GameState.shotClock))}`;
+    }
+    function handleEscape() {
+      if (GameState.scene === CONFIG.STATES.PLAYING) showPauseMenu();
+      else if (GameState.scene === CONFIG.STATES.PAUSED) { overlayUI.innerHTML = ""; GameState.scene = CONFIG.STATES.PLAYING; }
+    }
+    function parseClassroomParams() {
+      const url = new URL(location.href), mode = url.searchParams.get("mode"), sport = url.searchParams.get("sport");
+      if (mode === "classroom" && ["hockey","football","basketball"].includes(sport)) { hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, 0); }
+    }
+    let prev = performance.now() / 1000, accumulator = 0;
+    function update(dt) {
+      audio.update(dt); particles.update(dt);
+      if (GameState.scene === CONFIG.STATES.PLAYING && GameState.activeGame) {
+        GameState.timer -= dt;
+        GameState.activeGame.update(dt);
+        updateHUD();
+        if (GameState.timer <= 0 || GameState.lives <= 0) endGame();
+      }
+      Input.clearFrame();
+    }
+    function render() {
+      ctx.fillStyle = "#050505";
+      ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+      if ([CONFIG.STATES.HUB, CONFIG.STATES.GAME_SELECT, CONFIG.STATES.SCORE_SCREEN].includes(GameState.scene)) drawAttractScreen();
+      if ([CONFIG.STATES.PLAYING, CONFIG.STATES.PAUSED, CONFIG.STATES.QUIZ].includes(GameState.scene) && GameState.activeGame) GameState.activeGame.render(ctx);
+      particles.render(ctx);
+    }
+    function drawAttractScreen() {
+      const t = performance.now() * 0.001;
+      ctx.fillStyle = "#060606";
+      ctx.fillRect(0, 0, 640, 480);
+      for (let i = 0; i < 90; i++) { ctx.fillStyle = i % 2 ? "#0e0e0e" : "#101010"; ctx.fillRect((i * 37 + (t * 20) % 640) % 640, (i * 19) % 480, 4, 4); }
+      ctx.fillStyle = "#ffd34d";
+      ctx.font = "bold 26px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillText("SPORT ACADEMY", 320, 220);
+      ctx.font = "14px Courier New";
+      ctx.fillStyle = "#bbb";
+      ctx.fillText("RETRO SPORTS LEARNING HUB", 320, 246);
+    }
+    function loop(nowMs) {
+      const now = nowMs / 1000;
+      let frame = now - prev;
+      if (frame > 0.1) frame = 0.1;
+      prev = now;
+      accumulator += frame;
+      while (accumulator >= CONFIG.FIXED_DT) { update(CONFIG.FIXED_DT); accumulator -= CONFIG.FIXED_DT; }
+      render();
+      requestAnimationFrame(loop);
+    }
+    mountHub();
+    parseClassroomParams();
+    requestAnimationFrame(loop);
+    const konami = ["arrowup","arrowup","arrowdown","arrowdown","arrowleft","arrowright","arrowleft","arrowright","b","a"];
+    let konamiAt = 0;
+    addEventListener("keydown", (e) => { const k = e.key.toLowerCase(); if (k === konami[konamiAt]) konamiAt++; else konamiAt = 0; if (konamiAt >= konami.length) { konamiAt = 0; queuePopup("EASTER EGG UNLOCKED", "RETRO TABLE TENNIS unlocked (arcade-only teaser mode). Press any cabinet to keep playing!", null, () => addXP(30)); } });
+  </script>
+</body>
+</html>
