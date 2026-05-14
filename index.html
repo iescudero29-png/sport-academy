@@ -274,8 +274,8 @@
   </style>
 </head>
 <body>
-  <div id="app" aria-label="SPORT ACADEMY retro sports learning hub">
-    <canvas id="gameCanvas" width="640" height="480" aria-label="SPORT ACADEMY game canvas">Your browser does not support HTML5 canvas.</canvas>
+  <div id="app" aria-label="Game application container">
+    <canvas id="gameCanvas" width="640" height="480" role="application" aria-label="SPORT ACADEMY gameplay canvas">Your browser does not support HTML5 canvas.</canvas>
     <div id="hub-ui"></div>
     <div id="overlay-ui"></div>
   </div>
@@ -437,7 +437,7 @@
       const card = document.createElement("div");
       card.className = "overlay-card panel";
       let html = `<div><strong>${p.title}</strong></div><div style="margin-top:6px; line-height:1.35">${p.body}</div>`;
-      html += !p.choices ? `<div class="btn-row"><button data-c="ok" aria-label="Continue popup">CONTINUE</button></div>` : `<div class="choices">${p.choices.map((c, i) => `<button data-c="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
+      html += !p.choices ? `<div class="btn-row"><button data-c="ok" aria-label="Continue popup">CONTINUE</button></div>` : `<div class="choices">${p.choices.map((c, i) => `<button data-c="${i}" aria-label="Choice ${String.fromCharCode(65 + i)}: ${c}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
       card.innerHTML = html;
       overlayUI.appendChild(card);
       card.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", () => { const val = btn.dataset.c; overlayUI.innerHTML = ""; if (p.onChoice) p.onChoice(val === "ok" || val === "skip" ? null : Number(val)); showNextPopup(); }));
@@ -608,7 +608,7 @@
       }
       const card = document.createElement("div");
       card.className = "overlay-card panel";
-      card.innerHTML = `<div><strong>QUIZ • ${GameState.quizSport.toUpperCase()}</strong></div><div style="margin-top:6px">${q.q}</div><div class="progress-bar"><span id="qTimer"></span></div><div class="choices">${q.choices.map((c, i) => `<button data-i="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
+      card.innerHTML = `<div><strong>QUIZ • ${GameState.quizSport.toUpperCase()}</strong></div><div style="margin-top:6px">${q.q}</div><div class="progress-bar"><span id="qTimer"></span></div><div class="choices">${q.choices.map((c, i) => `<button data-i="${i}" aria-label="Choice ${String.fromCharCode(65 + i)}: ${c}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
       overlayUI.innerHTML = "";
       overlayUI.appendChild(card);
       const timerBar = card.querySelector("#qTimer");
