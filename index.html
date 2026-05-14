@@ -275,7 +275,7 @@
 </head>
 <body>
   <div id="app" aria-label="Game application container">
-    <canvas id="gameCanvas" width="640" height="480" role="application" aria-label="SPORT ACADEMY gameplay canvas">Your browser does not support HTML5 canvas.</canvas>
+    <canvas id="gameCanvas" width="640" height="480" aria-label="SPORT ACADEMY gameplay canvas">Your browser does not support HTML5 canvas.</canvas>
     <div id="hub-ui"></div>
     <div id="overlay-ui"></div>
   </div>
@@ -286,7 +286,9 @@
       STATES: { HUB: "HUB", GAME_SELECT: "GAME_SELECT", GAME_LOADING: "GAME_LOADING", PLAYING: "PLAYING", QUIZ: "QUIZ", PAUSED: "PAUSED", GAME_OVER: "GAME_OVER", SCORE_SCREEN: "SCORE_SCREEN" }
     };
     const canvas = document.getElementById("gameCanvas");
+    if (!(canvas instanceof HTMLCanvasElement)) throw new Error("Missing #gameCanvas element");
     const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("Unable to initialize 2D canvas context");
     ctx.imageSmoothingEnabled = false;
     const hubUI = document.getElementById("hub-ui");
     const overlayUI = document.getElementById("overlay-ui");
@@ -306,7 +308,23 @@
     const Storage = {
       warned: false,
       load() {
-        const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+        let raw = null;
+        try {
+          raw = localStorage.getItem(CONFIG.STORAGE_KEY);
+        } catch {
+          return {
+            studentName: "PLAYER1",
+            highScores: { hockey: 0, football: 0, basketball: 0 },
+            badges: {
+              hockey_physics: false, hockey_geometry: false, hockey_statistics: false, hockey_rules: false,
+              football_physics: false, football_geometry: false, football_statistics: false, football_rules: false,
+              basketball_physics: false, basketball_geometry: false, basketball_statistics: false, basketball_rules: false
+            },
+            quizStats: { correct: 0, attempted: 0 },
+            lastPlayed: new Date().toISOString(),
+            settings: { highContrast: false, largeFont: false, colorBlind: false }
+          };
+        }
         const base = { studentName: "PLAYER1", highScores: { hockey: 0, football: 0, basketball: 0 }, badges: { hockey_physics: false, hockey_geometry: false, hockey_statistics: false, hockey_rules: false, football_physics: false, football_geometry: false, football_statistics: false, football_rules: false, basketball_physics: false, basketball_geometry: false, basketball_statistics: false, basketball_rules: false }, quizStats: { correct: 0, attempted: 0 }, lastPlayed: new Date().toISOString(), settings: { highContrast: false, largeFont: false, colorBlind: false } };
         if (!raw) return base;
         try {
@@ -700,7 +718,9 @@
       try {
         const url = new URL(location.href), mode = url.searchParams.get("mode"), sport = url.searchParams.get("sport");
         if (mode === "classroom" && ["hockey","football","basketball"].includes(sport)) { hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, 0); }
-      } catch {}
+      } catch (err) {
+        if (DEBUG) console.warn("Failed to parse classroom URL params", err);
+      }
     }
     let prev = performance.now() / 1000, accumulator = 0;
     function update(dt) {
