@@ -304,6 +304,7 @@
       Input.released.add(key);
     });
     const Storage = {
+      warned: false,
       load() {
         const raw = localStorage.getItem(CONFIG.STORAGE_KEY);
         const base = { studentName: "PLAYER1", highScores: { hockey: 0, football: 0, basketball: 0 }, badges: { hockey_physics: false, hockey_geometry: false, hockey_statistics: false, hockey_rules: false, football_physics: false, football_geometry: false, football_statistics: false, football_rules: false, basketball_physics: false, basketball_geometry: false, basketball_statistics: false, basketball_rules: false }, quizStats: { correct: 0, attempted: 0 }, lastPlayed: new Date().toISOString(), settings: { highContrast: false, largeFont: false, colorBlind: false } };
@@ -313,13 +314,38 @@
           return { ...base, ...parsed, highScores: { ...base.highScores, ...(parsed.highScores || {}) }, badges: { ...base.badges, ...(parsed.badges || {}) }, quizStats: { ...base.quizStats, ...(parsed.quizStats || {}) }, settings: { ...base.settings, ...(parsed.settings || {}) } };
         } catch { return base; }
       },
-      save(progress) { progress.lastPlayed = new Date().toISOString(); localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(progress)); }
+      save(progress) {
+        progress.lastPlayed = new Date().toISOString();
+        try {
+          localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(progress));
+        } catch {
+          if (!this.warned) {
+            this.warned = true;
+            queuePopup("SAVE WARNING", "Progress could not be saved in this browser session.");
+          }
+        }
+      }
     };
     class AudioEngine {
-      constructor() { this.ctx = null; this.master = null; this.musicTimer = 0; this.musicStep = 0; this.musicOn = true; }
-      ensure() { if (this.ctx) return; this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.master = this.ctx.createGain(); this.master.gain.value = 0.1; this.master.connect(this.ctx.destination); }
-      beep(freq = 440, dur = 0.08, type = "square", vol = 0.3) { this.ensure(); const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, t); gain.gain.setValueAtTime(0.0001, t); gain.gain.exponentialRampToValueAtTime(vol, t + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); osc.connect(gain); gain.connect(this.master); osc.start(t); osc.stop(t + dur + 0.02); }
-      noise(dur = 0.2, vol = 0.08) { this.ensure(); const len = this.ctx.sampleRate * dur; const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1; const src = this.ctx.createBufferSource(); src.buffer = buffer; const gain = this.ctx.createGain(); const t = this.ctx.currentTime; gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(gain).connect(this.master); src.start(t); }
+      constructor() { this.ctx = null; this.master = null; this.musicTimer = 0; this.musicStep = 0; this.musicOn = true; this.disabled = false; }
+      ensure() {
+        if (this.ctx) return true;
+        if (this.disabled) return false;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) { this.disabled = true; return false; }
+        try {
+          this.ctx = new Ctx();
+          this.master = this.ctx.createGain();
+          this.master.gain.value = 0.1;
+          this.master.connect(this.ctx.destination);
+          return true;
+        } catch {
+          this.disabled = true;
+          return false;
+        }
+      }
+      beep(freq = 440, dur = 0.08, type = "square", vol = 0.3) { if (!this.ensure()) return; const t = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, t); gain.gain.setValueAtTime(0.0001, t); gain.gain.exponentialRampToValueAtTime(vol, t + 0.01); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); osc.connect(gain); gain.connect(this.master); osc.start(t); osc.stop(t + dur + 0.02); }
+      noise(dur = 0.2, vol = 0.08) { if (!this.ensure()) return; const len = this.ctx.sampleRate * dur; const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1; const src = this.ctx.createBufferSource(); src.buffer = buffer; const gain = this.ctx.createGain(); const t = this.ctx.currentTime; gain.gain.setValueAtTime(vol, t); gain.gain.exponentialRampToValueAtTime(0.0001, t + dur); src.connect(gain).connect(this.master); src.start(t); }
       playShoot() { this.beep(520, 0.05); this.beep(760, 0.07); }
       playGoal() { this.beep(660, 0.1); this.beep(880, 0.12); this.noise(0.35, 0.06); }
       playWhistle() { this.beep(1100, 0.08, "sawtooth", 0.15); }
@@ -411,7 +437,7 @@
       const card = document.createElement("div");
       card.className = "overlay-card panel";
       let html = `<div><strong>${p.title}</strong></div><div style="margin-top:6px; line-height:1.35">${p.body}</div>`;
-      html += !p.choices ? `<div class="btn-row"><button data-c="ok">OK</button><button data-c="skip">CONTINUE</button></div>` : `<div class="choices">${p.choices.map((c, i) => `<button data-c="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
+      html += !p.choices ? `<div class="btn-row"><button data-c="ok" aria-label="Continue popup">CONTINUE</button></div>` : `<div class="choices">${p.choices.map((c, i) => `<button data-c="${i}">${String.fromCharCode(65 + i)}. ${c}</button>`).join("")}</div>`;
       card.innerHTML = html;
       overlayUI.appendChild(card);
       card.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", () => { const val = btn.dataset.c; overlayUI.innerHTML = ""; if (p.onChoice) p.onChoice(val === "ok" || val === "skip" ? null : Number(val)); showNextPopup(); }));
@@ -448,8 +474,9 @@
         if (this.puck.x < 18 && this.puck.y > 190 && this.puck.y < 290) { GameState.score.ai++; resetPuck(this.puck, 1); audio.playGoal(); particles.spawn(24, this.puck.y, "GOAL"); }
         if (this.puck.x > 622 && this.puck.y > 190 && this.puck.y < 290) { GameState.score.player++; resetPuck(this.puck, -1); addXP(12); audio.playGoal(); particles.spawn(616, this.puck.y, "GOAL"); GameState.lesson.record("hockey", "rules", true); }
         if (GameState.timer < 90 && !this.popFlags.frictionQuiz) {
+          const frictionQuiz = { choices: ["Ice", "Grass", "Sand"], answer: 2 };
           this.popFlags.frictionQuiz = true;
-          queuePopup("FRICTION QUIZ!", "Ice has LOW friction. Which surface has MORE friction?", ["Ice", "Grass", "Sand"], (i) => { const ok = i === 2; if (ok) { addXP(50); GameState.score.player += 1; audio.playCorrect(); } else audio.playWrong(); GameState.lesson.record("hockey", "physics", ok); });
+          queuePopup("FRICTION QUIZ!", "Ice has LOW friction. Which surface has MORE friction?", frictionQuiz.choices, (i) => { const ok = i === frictionQuiz.answer; if (ok) { addXP(50); GameState.score.player += 1; audio.playCorrect(); } else audio.playWrong(); GameState.lesson.record("hockey", "physics", ok); });
         }
         if (GameState.timer < 60 && !this.popFlags.icing) { this.popFlags.icing = true; queuePopup("ICING RULE", "If a puck crosses center and goal line untouched, icing is called and play resets."); GameState.lesson.record("hockey", "rules", true); }
         if (GameState.timer < 55 && !this.popFlags.offside) { this.popFlags.offside = true; queuePopup("OFFSIDE", "Attacker cannot enter offensive zone before the puck (simplified rule)."); GameState.lesson.record("hockey", "rules", true); }
@@ -512,6 +539,11 @@
       ...makeBaseGame("basketball"),
       modes: ["FREE THROW", "3-POINT CONTEST", "1-on-1 MATCH"],
       init(mode = 0) { makeBaseGame("basketball").init.call(this, mode); this.player = { x: 120, y: 370, w: 12, h: 14, dribble: false, steps: 0 }; this.ai = { x: 420, y: 370 }; this.ball = { x: 145, y: 355, vx: 0, vy: 0, airborne: false, r: 7 }; this.charge = 0; this.shotTrail = []; this.popFlags = {}; },
+      getShotParams() {
+        const angle = ((Input.down.has("arrowup") ? 52 : 45) * Math.PI) / 180;
+        const speed = 420 + this.charge * 260;
+        return { angle, speed };
+      },
       update(dt) {
         const left = Input.down.has("a") || Input.down.has("arrowleft"), right = Input.down.has("d") || Input.down.has("arrowright");
         if (left) { this.player.x -= 110 * dt; this.player.steps += dt * 3; }
@@ -523,7 +555,7 @@
         this.ai.x += Math.sign(this.player.x - this.ai.x) * 70 * dt;
         if (Input.down.has(" ")) { this.charge = Math.min(1, this.charge + dt * 0.9); this.computeTrail(); }
         if (Input.released.has(" ") && !this.ball.airborne) {
-          const angle = ((Input.down.has("arrowup") ? 52 : 45) * Math.PI) / 180, speed = 420 + this.charge * 260;
+          const { angle, speed } = this.getShotParams();
           this.ball.airborne = true; this.ball.vx = Math.cos(angle) * speed; this.ball.vy = -Math.sin(angle) * speed; this.charge = 0; this.shotTrail.length = 0; audio.playShoot();
           if (!this.popFlags.firstShot) { this.popFlags.firstShot = true; queuePopup("PROJECTILE MOTION!", "Your shot follows a PARABOLA."); queuePopup("OPTIMAL ANGLE!", "Great angles are often 45°–52° for height and distance."); GameState.lesson.record("basketball", "physics", true); GameState.lesson.record("basketball", "geometry", true); }
         }
@@ -539,7 +571,7 @@
         GameState.shotClock -= dt; if (GameState.shotClock <= 0) { GameState.shotClock = 24; queuePopup("24-SECOND RULE", "Teams must attempt a shot before the shot clock expires."); }
         if (GameState.timer < 65 && !this.popFlags.quiz) { this.popFlags.quiz = true; startQuiz("basketball"); }
       },
-      computeTrail() { this.shotTrail.length = 0; const angle = ((Input.down.has("arrowup") ? 52 : 45) * Math.PI) / 180, speed = 420 + this.charge * 260; let x = this.player.x + 22, y = 350, vx = Math.cos(angle) * speed, vy = -Math.sin(angle) * speed; for (let i = 0; i < 20; i++) { const t = 0.06; vy += 980 * t; x += vx * t; y += vy * t; this.shotTrail.push({ x, y }); } },
+      computeTrail() { this.shotTrail.length = 0; const { angle, speed } = this.getShotParams(); let x = this.player.x + 22, y = 350, vx = Math.cos(angle) * speed, vy = -Math.sin(angle) * speed; for (let i = 0; i < 20; i++) { const t = 0.06; vy += 980 * t; x += vx * t; y += vy * t; this.shotTrail.push({ x, y }); } },
       render(ctx) {
         for (let y = 24; y < 456; y += 18) { ctx.fillStyle = (y / 18) % 2 ? "#cc7d32" : "#d7893e"; ctx.fillRect(0, y, 640, 18); }
         ctx.strokeStyle = "#fff"; ctx.strokeRect(540, 90, 8, 100); ctx.strokeRect(548, 110, 40, 6); ctx.strokeStyle = "#ff9f3f"; ctx.beginPath(); ctx.arc(560, 180, 12, 0, Math.PI); ctx.stroke(); ctx.strokeStyle = "#ddd"; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(550 + i * 4, 180); ctx.lineTo(552 + i * 3, 202); ctx.stroke(); } ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(560, 300, 140, Math.PI * 0.95, Math.PI * 1.7); ctx.stroke();
@@ -581,11 +613,13 @@
       overlayUI.appendChild(card);
       const timerBar = card.querySelector("#qTimer");
       let alive = true;
-      const tick = () => { if (!alive || GameState.scene !== CONFIG.STATES.QUIZ) return; quizEngine.timeLeft -= 0.1; timerBar.style.transform = `scaleX(${Math.max(0, quizEngine.timeLeft / 15)})`; if (quizEngine.timeLeft <= 0) { alive = false; const res = quizEngine.submitAnswer(-1); if (!res.ok) audio.playWrong(); quizEngine.getNext(); setTimeout(renderQuiz, 200); return; } setTimeout(tick, 100); };
-      setTimeout(tick, 100);
+      let timerId = 0;
+      const tick = () => { if (!alive || GameState.scene !== CONFIG.STATES.QUIZ) return; quizEngine.timeLeft -= 0.1; timerBar.style.transform = `scaleX(${Math.max(0, quizEngine.timeLeft / 15)})`; if (quizEngine.timeLeft <= 0) { alive = false; const res = quizEngine.submitAnswer(-1); if (!res.ok) audio.playWrong(); quizEngine.getNext(); setTimeout(renderQuiz, 200); return; } timerId = setTimeout(tick, 100); };
+      timerId = setTimeout(tick, 100);
       card.querySelectorAll("button").forEach((btn) => btn.addEventListener("click", () => {
         if (!alive) return;
         alive = false;
+        clearTimeout(timerId);
         const idx = Number(btn.dataset.i), res = quizEngine.submitAnswer(idx);
         if (res.ok) { audio.playCorrect(); addXP(14); particles.spawn(CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, "CORRECT"); GameState.lesson.record(GameState.quizSport, "statistics", true); } else audio.playWrong();
         queuePopup(res.ok ? "CORRECT" : "WRONG", res.explanation);
@@ -653,7 +687,7 @@
     }
     function updateHUD() {
       const timer = hubUI.querySelector("#timer"), lives = hubUI.querySelector("#lives"), xpFill = hubUI.querySelector("#xpFill"), shotClock = hubUI.querySelector("#shotClock");
-      if (timer) { const m = Math.max(0, GameState.timer) / 60, mm = Math.floor(m).toString().padStart(2, "0"), ss = Math.floor((m % 1) * 60).toString().padStart(2, "0"); timer.textContent = `${mm}:${ss}`; }
+      if (timer) { const minutes = Math.max(0, GameState.timer) / 60, minutesFormatted = Math.floor(minutes).toString().padStart(2, "0"), secondsFormatted = Math.floor((minutes % 1) * 60).toString().padStart(2, "0"); timer.textContent = `${minutesFormatted}:${secondsFormatted}`; }
       if (lives) { const icon = GameState.activeGame?.sport === "hockey" ? "🏒" : GameState.activeGame?.sport === "football" ? "⚽" : "🏀"; lives.textContent = icon.repeat(Math.max(1, Math.min(3, GameState.lives))); }
       if (xpFill) xpFill.style.width = `${GameState.xp}%`;
       if (shotClock) shotClock.textContent = `${Math.max(0, Math.ceil(GameState.shotClock))}`;
@@ -663,8 +697,10 @@
       else if (GameState.scene === CONFIG.STATES.PAUSED) { overlayUI.innerHTML = ""; GameState.scene = CONFIG.STATES.PLAYING; }
     }
     function parseClassroomParams() {
-      const url = new URL(location.href), mode = url.searchParams.get("mode"), sport = url.searchParams.get("sport");
-      if (mode === "classroom" && ["hockey","football","basketball"].includes(sport)) { hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, 0); }
+      try {
+        const url = new URL(location.href), mode = url.searchParams.get("mode"), sport = url.searchParams.get("sport");
+        if (mode === "classroom" && ["hockey","football","basketball"].includes(sport)) { hubUI.innerHTML = ""; overlayUI.innerHTML = ""; startGame(sport, 0); }
+      } catch {}
     }
     let prev = performance.now() / 1000, accumulator = 0;
     function update(dt) {
